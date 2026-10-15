@@ -78,6 +78,8 @@ export interface NumStep {
   /** 典型誤答の診断。正答を入れたときは必ず null を返すこと */
   diagnose?: (v: number) => string | null;
   pad?: PadSpec;
+  /** 足場: 2回まちがえたら出す「選ぶ」形（本番テスト・実力の階段では出さない。ボス戦はこちらで出す） */
+  scaffold?: ChoiceStep;
 }
 
 export interface ChoiceStep {
@@ -138,7 +140,33 @@ export interface PlotStep {
   hints: string[];
 }
 
-export type Step = NumStep | ChoiceStep | FillStep | CellsStep | PlotStep;
+/**
+ * カードを置いて組み立てる（ことば・単位・数のカード）。手書き文字は使わない。
+ * layout の { slot: i } が i 番目の置き場所。cards には ダミー（よけいなカード）を混ぜる。
+ * accept のどれか1つと、置いたカードの文字が全部一致したら正解（同じ意味の別の書き方は accept に全部入れる）。
+ * カードは1まいずつしか使えない（同じ文字が要るときは、同じカードを2まい入れる）。
+ */
+export interface BuildStep {
+  kind: 'build';
+  label: string;
+  prompt: string;
+  layout: FillToken[];
+  cards: string[];
+  accept: string[][];
+  hints: string[];
+  /** まちがいの置き方への ひとこと。正解の置き方では null を返すこと */
+  diagnose?: (v: string[]) => string | null;
+  /** 足場: 2回まちがえたら出す「選ぶ」形（本番テスト・実力の階段では出さない。ボス戦はこちらで出す） */
+  scaffold?: ChoiceStep;
+  pad?: undefined;
+}
+
+/** 置いたカードが正解か（同じ意味の別の書き方も accept に入っている） */
+export function buildOk(step: Pick<BuildStep, 'accept'>, vals: readonly string[]): boolean {
+  return step.accept.some((a) => a.length === vals.length && a.every((x, i) => x === vals[i]));
+}
+
+export type Step = NumStep | ChoiceStep | FillStep | CellsStep | PlotStep | BuildStep;
 
 /* ------------------------------------------------------------------ */
 /* 問題                                                                  */

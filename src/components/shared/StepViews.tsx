@@ -7,8 +7,9 @@
  */
 import React, { useState } from 'react';
 import { Keypad } from './Keypad';
-import type { FillStep, FillToken, CellsStep, PlotStep } from '../../lib/question';
-import { toNum } from '../../lib/question';
+import type { FillStep, FillToken, CellsStep, PlotStep, BuildStep } from '../../lib/question';
+import { toNum, buildOk } from '../../lib/question';
+import { Delete, RotateCcw } from 'lucide-react';
 
 const MAX_CHARS = 7;
 
@@ -189,6 +190,77 @@ export const PlotView: React.FC<{ step: PlotStep; onCorrect: (text: string) => v
       <button onClick={check} disabled={pts.length === 0} className="w-full mt-3 py-3 rounded-2xl bg-brand text-on-brand font-black shadow active:scale-95 transition disabled:opacity-40" data-testid="plot-done">
         できた！
       </button>
+    </div>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/* カードを置いて 組み立てる                                              */
+/* ------------------------------------------------------------------ */
+
+export const BuildView: React.FC<{ step: BuildStep; onCorrect: (text: string) => void; onWrong: (note: string | null) => void }> = ({ step, onCorrect, onWrong }) => {
+  const slots = step.accept[0]!.length;
+  // placed[i] = i番めの置き場所に置いた カードの番号（なければ null）
+  const [placed, setPlaced] = useState<(number | null)[]>(() => Array(slots).fill(null));
+  const used = new Set(placed.filter((c): c is number => c !== null));
+  const full = placed.every((c) => c !== null);
+  const put = (card: number) => {
+    const at = placed.findIndex((c) => c === null);
+    if (at < 0) return;
+    setPlaced((p) => p.map((c, i) => (i === at ? card : c)));
+  };
+  const remove = (slot: number) => setPlaced((p) => p.map((c, i) => (i === slot ? null : c)));
+  const lastFilled = () => { for (let i = slots - 1; i >= 0; i--) if (placed[i] !== null) return i; return -1; };
+  const submit = () => {
+    if (!full) return;
+    const vals = placed.map((c) => step.cards[c as number]!);
+    if (buildOk(step, vals)) onCorrect(step.layout.map((t) => (typeof t === 'object' ? vals[t.slot] : t)).join(' '));
+    else onWrong(step.diagnose?.(vals) ?? 'カードを もう一度 見なおそう。');
+  };
+  return (
+    <div data-testid="build" className="space-y-4">
+      <div className="min-h-20 rounded-2xl bg-surface-2 border-2 border-line flex flex-wrap items-center justify-center gap-2 px-3 py-3" aria-live="polite">
+        {step.layout.map((t, i) => typeof t === 'object' ? (
+          <button
+            key={i}
+            onClick={() => remove(t.slot)}
+            data-testid={`build-slot-${t.slot}`}
+            aria-label={placed[t.slot] === null ? 'からの おきば' : `${step.cards[placed[t.slot] as number]} （タップで もどす）`}
+            className={`min-w-[4.2rem] h-14 px-3 rounded-xl border-[3px] text-xl font-black transition ${placed[t.slot] === null ? 'border-dashed border-line bg-surface text-faint' : 'border-brand bg-surface text-content'}`}
+          >
+            {placed[t.slot] === null ? '□' : step.cards[placed[t.slot] as number]}
+          </button>
+        ) : (
+          <span key={i} className="text-2xl font-black text-content">{t}</span>
+        ))}
+      </div>
+      <div className="flex flex-wrap justify-center gap-2" data-testid="build-cards">
+        {step.cards.map((c, i) => (
+          <button
+            key={i}
+            disabled={used.has(i)}
+            onClick={() => put(i)}
+            data-testid={`build-card-${i}`}
+            className="min-w-[4rem] px-4 py-3 rounded-2xl border-2 text-xl font-black transition-all active:scale-95 bg-surface border-sky-300 text-sky-700 hover:bg-sky-50 disabled:opacity-25 disabled:active:scale-100"
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <button onClick={() => { const i = lastFilled(); if (i >= 0) remove(i); }} disabled={used.size === 0}
+          className="py-3 rounded-2xl border-2 border-line bg-surface text-content font-bold flex items-center justify-center gap-1 disabled:opacity-40">
+          <Delete size={18} /> 1つ もどす
+        </button>
+        <button onClick={() => setPlaced(Array(slots).fill(null))} disabled={used.size === 0}
+          className="py-3 rounded-2xl border-2 border-line bg-surface text-content font-bold flex items-center justify-center gap-1 disabled:opacity-40">
+          <RotateCcw size={18} /> ぜんぶ もどす
+        </button>
+        <button onClick={submit} disabled={!full} data-testid="build-submit"
+          className="py-3 rounded-2xl bg-brand text-on-brand font-black disabled:opacity-40">
+          これで けってい
+        </button>
+      </div>
     </div>
   );
 };

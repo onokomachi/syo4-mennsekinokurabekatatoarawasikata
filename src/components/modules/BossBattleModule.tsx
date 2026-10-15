@@ -373,7 +373,7 @@ export const BossBattleModule: React.FC<Props> = ({ onExit }) => {
 
   // 練習・テストと同じ解答画面。ボス戦は測る場面なので、ヒントと理由の言語化は出さない（testMode）
   const renderAnswer = (tp: TestProblem) => (
-    <QuestionRound question={tp} onNext={() => {}} nextLabel="つぎへ" testMode onResult={() => handleCorrect()} />
+    <QuestionRound question={tp} onNext={() => {}} nextLabel="つぎへ" testMode chooseMode onResult={() => handleCorrect()} />
   );
 
   return (

@@ -90,7 +90,8 @@ function weightedPick<T>(items: { item: T; weight: number }[]): T {
 function baseSeconds(tp: TestProblem): number {
   let t = 8;
   for (const st of tp.steps) {
-    if (st.kind === 'choice') t += 14;
+    if (st.kind === 'choice' || (st.kind === 'build' && st.scaffold) || (st.kind === 'num' && st.scaffold)) t += 14;
+    else if (st.kind === 'build') t += 16;
     else if (st.kind === 'cells' || st.kind === 'plot') t += 40;
     else if (st.kind === 'fill') t += 8 + 5 * st.accept[0]!.length + (st.pad ? 20 : 0);
     else if (st.pad?.kind === 'calc') t += 26;
