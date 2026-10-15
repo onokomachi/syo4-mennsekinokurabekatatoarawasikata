@@ -8,6 +8,9 @@
   答え方は問題の `steps` に並べる: 数（num）・選ぶ（choice）・□に入れる（fill: 式 `□×□`・表）・方眼に形をつくる（cells）・グラフに点をうつ（plot）。
   新しい項目は ①`constants.ts` の MODULES にレベルを足す ②`problems.ts` にジェネレーターを足して `GENERATORS` に登録
   ③`testConfig.ts`（テストに出すなら）か `trialConfig.ts` の `EXTRA_SKILLS` に足す。
+- **カードで組み立てる答え方（`build`）**: 公式（ことば）と面積の単位は、カードを置いて答える（`StepViews.tsx` の `BuildView`）。
+  `accept` に同じ意味の別の書き方を全部入れ、`diagnose` でまちがいに声かけ、`scaffold` に「選ぶ」形を持たせる。
+  足場は 練習で2回まちがえたら出す（習熟度満タンなら出さない）。本番テスト・実力の階段（`testMode`）では出さない。ボス戦（`chooseMode`）は最初から「選ぶ」形。
 - 図は `src/lib/shapes.ts`（長さの単位の座標の多角形・方眼のマス）。寸法の文字は辺の長さから自動で書く。
   `figArea` を入れると、`npm run verify` が図から面積を出し直して照合する。
 - **記録の名前（skillId）＝レベルID。** `grid-*` `formula-*` `unit-*` `calc-*` `side-*` `comp-*` `change-*` `eh-*`（＋ `mock-*` `boss-*`）。

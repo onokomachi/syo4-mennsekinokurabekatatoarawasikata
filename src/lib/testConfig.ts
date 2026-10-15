@@ -50,7 +50,7 @@ export const TEST_STEPS: TestStep[] = [
   step(5, '①', '面積の 単位えらび', '表', 5, 'unit-choose', () => genUnitChoose(true)),
   step(5, '②', '面積の 単位えらび（もう1問）', '表', 5, 'unit-choose', () => genUnitChoose(true)),
   // 大問6: 正方形・長方形の面積（式・答 各5点）
-  step(6, '①', '正方形の 面積（式・答え）', '表', 10, 'formula-square', genFormulaSquare),
+  step(6, '①', '正方形の 面積（式・答え）', '表', 10, 'formula-square', () => genFormulaSquare(false)),
   step(6, '②', '長方形の 面積 km²（式・答え）', '表', 10, 'calc-km', () => genCalcKm(true)),
   step(6, '③', 'cm と m の 長方形（式・答え）', '表', 10, 'calc-mixunit', () => genCalcMixunit('m')),
   // 大問7: a・ha の単位で求める（式・答 各5点）

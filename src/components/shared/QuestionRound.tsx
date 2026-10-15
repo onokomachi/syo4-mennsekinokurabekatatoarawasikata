@@ -18,7 +18,7 @@ import { Lightbulb, Check, X } from 'lucide-react';
 import { ScratchPad, useRoundRecorder } from 'learning-app-kit/react';
 import { Keypad } from './Keypad';
 import { FigureView } from './Figure';
-import { FillView, CellsView, PlotView } from './StepViews';
+import { FillView, CellsView, PlotView, BuildView } from './StepViews';
 import { HintBox, ResultPanel } from '../ui/primitives';
 import type { Question, Step, NumStep, ChoiceStep, PadSpec } from '../../lib/question';
 import { fmt, same, toNum } from '../../lib/question';
@@ -36,6 +36,8 @@ interface Props {
   /** 測る場面（本番テスト・実力の階段・ボス戦）。ヒントと理由の言語化を出さない */
   testMode?: boolean;
   accentClass?: string;
+  /** ボス戦: 組み立てる問題も「選ぶ」形（足場）で出す */
+  chooseMode?: boolean;
 }
 
 /** 入力欄に入れられる文字数（問題の答えは検査で 7文字以内にしてある） */
@@ -56,7 +58,7 @@ const CalcPad: React.FC<{ pad: Extract<PadSpec, { kind: 'calc' }> }> = ({ pad })
   );
 };
 
-export const QuestionRound: React.FC<Props> = ({ question, onNext, onResult, onMiss, nextLabel, testMode = false, accentClass = 'bg-emerald-500 hover:bg-emerald-600' }) => {
+export const QuestionRound: React.FC<Props> = ({ question, onNext, onResult, onMiss, nextLabel, testMode = false, accentClass = 'bg-emerald-500 hover:bg-emerald-600', chooseMode = false }) => {
   const [idx, setIdx] = useState(0);
   const [done, setDone] = useState<Done[]>([]);
   const [mistakes, setMistakes] = useState(0);
@@ -73,7 +75,17 @@ export const QuestionRound: React.FC<Props> = ({ question, onNext, onResult, onM
   const rec = useRoundRecorder({ moduleId, skillId: question.skillId, record: recordResult });
   const endRef = useRef<HTMLDivElement>(null);
 
-  const step: Step | undefined = question.steps[idx];
+  const mastered = useProgressStore((s) => s.getMasteryStreak(question.skillId)) >= 1;
+  const rawStep: Step | undefined = question.steps[idx];
+  /**
+   * 足場: 組み立てる・数を入れる問題に「選ぶ」形を持たせてある。
+   *  - 練習: 2回まちがえたら出す（習熟度が満タンの項目では出さない）
+   *  - 本番テスト・実力の階段（testMode）: 出さない（組み立てだけ）
+   *  - ボス戦（chooseMode）: 最初から「選ぶ」形
+   */
+  const scaffold = rawStep && 'scaffold' in rawStep ? rawStep.scaffold : undefined;
+  const scaffoldOn = !!scaffold && (chooseMode || (!testMode && stepMiss >= 2 && !mastered));
+  const step: Step | undefined = scaffoldOn && scaffold ? { ...scaffold, label: rawStep!.label } : rawStep;
   const last = idx === question.steps.length - 1;
 
   useEffect(() => {
@@ -245,6 +257,12 @@ export const QuestionRound: React.FC<Props> = ({ question, onNext, onResult, onM
                 {step.pad && <div className="text-center my-2"><CalcPad pad={step.pad} /></div>}
                 <FillView key={idx} step={step} onCorrect={(t) => { playCorrect(); advance({ label: step.label, text: t }); }} onWrong={miss} />
               </>
+            )}
+            {step.kind === 'build' && (
+              <BuildView key={idx} step={step} onCorrect={(t) => { playCorrect(); advance({ label: step.label, text: t }); }} onWrong={miss} />
+            )}
+            {scaffoldOn && !chooseMode && (
+              <p className="mt-2 text-xs font-black text-amber-700" data-testid="scaffold-note">▼ 3つから えらんで みよう（つぎは じぶんで くみたてよう）</p>
             )}
             {step.kind === 'cells' && (
               <CellsView key={idx} step={step} onCorrect={(t) => { playCorrect(); advance({ label: step.label, text: t }); }} onWrong={miss} />

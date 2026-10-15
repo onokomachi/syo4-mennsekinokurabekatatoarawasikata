@@ -15,8 +15,8 @@
  * 図は shapes.ts の部品で作り、figArea に「図から出し直せる面積」を入れる（検査が照合する）。
  */
 import {
-  Question, NumStep, ChoiceStep, FillStep, FillToken, CellsStep, PlotStep, Figure, Poly, GridShape, GridCell, PadSpec,
-  rnd, pick, shuffle, fmt, same,
+  Question, NumStep, ChoiceStep, BuildStep, FillStep, FillToken, CellsStep, PlotStep, Figure, Poly, GridShape, GridCell, PadSpec,
+  rnd, pick, shuffle, fmt, same, buildOk,
 } from './question';
 import {
   Pt, rectPts, edgeDims, makeL, makeC, polyomino, addHalves, gridPerimeter, connected, rectOf, polyLabel,
@@ -39,6 +39,79 @@ const choiceStep = (o: { label: string; prompt: string; correct: string; wrongs:
 });
 
 const numStep = (o: Omit<NumStep, 'kind'>): NumStep => ({ kind: 'num', ...o });
+
+/* ---- カードを置いて組み立てる（ことば・単位） ---- */
+
+/** 同じ意味の別の書き方（accept）を全部ならべた BuildStep を作る。cards はシャッフルして ダミーを混ぜる */
+function buildStep(o: Omit<BuildStep, 'kind' | 'cards'> & { cards: string[] }): BuildStep {
+  return { kind: 'build', ...o, cards: shuffle(o.cards) };
+}
+
+const LENGTH_UNITS = ['cm', 'm', 'km'];
+const ALL_UNITS = ['cm²', 'm²', 'km²', 'a', 'ha', 'cm', 'm', 'km'];
+
+/** 面積の単位のカードを置いたときの ひとこと（correct＝正しい単位）。正しいときは null */
+function diagnoseUnit(correct: string) {
+  return (u: string): string | null => {
+    if (u === correct) return null;
+    if (LENGTH_UNITS.includes(u)) return `長さの 単位（${u}）だよ。面積は 2つの 長さを かけるから ${u}² のように 2 が付くよ。`;
+    if ((u === 'a' || u === 'ha') && (correct === 'a' || correct === 'ha')) return '1a は 1辺 10mの 正方形、1ha は 1辺 100mの 正方形。a と ha の 取りちがいに 気をつけよう。';
+    return `${u} だと 広さが ちがうよ。${UNIT_NOTE[u] ?? ''}`;
+  };
+}
+
+/** 公式（ことば）のカード。正方形は「1辺」を2まい */
+function formulaWordStep(kind: 'rect' | 'square'): BuildStep {
+  const rect = kind === 'rect';
+  const name = rect ? '長方形' : '正方形';
+  const correct = rect ? 'たて × 横' : '1辺 × 1辺';
+  const sc = rect
+    ? choiceStep({
+      label: '公式', prompt: '長方形の 面積 ＝ ？', correct,
+      wrongs: [
+        { text: '（たて ＋ 横）× 2', note: 'それは 長方形の まわりの 長さの 式だよ。' },
+        { text: 'たて ＋ 横', note: '面積は たし算では 出ないよ。1cm²が たてに □こ、横に □こ ならぶ…。' },
+        { text: 'たて × たて', note: 'たて と 横、2つの 長さを 使うよ。' },
+      ],
+      why: '1cm²の 正方形が たてに たての数、横に 横の数 ならぶから、たて × 横（横 × たて でも よい）。',
+      hints: ['1cm²の 正方形が 何こ ならぶかを 考えよう。', '1れつに 横の数だけ ならび、それが たての数だけ ある。', 'かけ算で 求められる。'],
+    })
+    : choiceStep({
+      label: '公式', prompt: '正方形の 面積 ＝ ？', correct,
+      wrongs: [
+        { text: '1辺 × 4', note: 'それは 正方形の まわりの 長さの 式だよ。' },
+        { text: '1辺 ＋ 1辺', note: '面積は たし算では 出ないよ。' },
+        { text: '1辺 × 2', note: 'たても 横も 1辺と 同じ 長さ。たて×横 に あてはめよう。' },
+      ],
+      why: '正方形は たて も 横も 1辺の 長さ。だから 1辺 × 1辺。',
+      hints: ['正方形は 4つの 辺の 長さが 同じ。', '長方形の 公式「たて × 横」に あてはめよう。', 'たても 横も「1辺」。'],
+    });
+  return buildStep({
+    label: '公式', prompt: `${name}の 面積を 求める 公式を、カードを おいて つくろう。`,
+    layout: [`${name}の 面積 ＝`, { slot: 0 }, '×', { slot: 1 }],
+    cards: rect ? ['たて', '横', '1辺', '高さ', 'まわり', '底辺'] : ['1辺', '1辺', 'たて', '横', 'まわり', '高さ'],
+    accept: rect ? [['たて', '横'], ['横', 'たて']] : [['1辺', '1辺']],
+    diagnose: (v) => {
+      if (buildOk({ accept: rect ? [['たて', '横'], ['横', 'たて']] : [['1辺', '1辺']] }, v)) return null;
+      const set = new Set(v);
+      if (rect) {
+        if (set.has('まわり')) return 'まわりの 長さは「（たて＋横）×2」。面積の 公式には 使わないよ。';
+        if (set.has('高さ') || set.has('底辺')) return '高さ・底辺は、三角形や 平行四辺形の 面積で 使う ことば。長方形は「たて」と「横」。';
+        if (set.has('1辺')) return '「1辺」は 正方形の ことば。長方形は 長さが ちがう 2つ（たて と 横）を かけるよ。';
+        if (v[0] === v[1]) return 'たて と 横、ちがう 2つの 長さを かけるよ。';
+      } else {
+        if (set.has('まわり')) return 'まわりの 長さの 式（1辺×4）に なって いるよ。面積は「1辺 × 1辺」。';
+        if (set.has('高さ')) return '高さは 三角形や 平行四辺形の ことば。正方形は「1辺」を 2つ かけるよ。';
+        if (set.has('たて') || set.has('横')) return '正方形は たて も 横も 同じ 長さ。だから「1辺」で 表すよ。';
+      }
+      return 'もう一度 ことばを 見なおそう。';
+    },
+    hints: rect
+      ? ['長方形の 面積は、1cm²の 正方形が たてと 横に ならんだ 数。', '長方形には 長さが ちがう 2つの 辺が ある。', '「たて」と「横」を かけるよ（じゅんじょは どちらでも よい）。']
+      : ['正方形は 4つの 辺の 長さが 同じ。', '長方形の 公式の「たて」も「横」も、同じ 長さ。', '同じ ことばを 2まい つかうよ。'],
+    scaffold: sc,
+  });
+}
 
 /** 「□ × □」の式。かけ算は じゅんじょを 入れかえても 正解 */
 function mulExpr(a: number, b: number, o: { hints: string[]; prompt?: string; diagnose?: (v: number[]) => string | null; pad?: PadSpec }): FillStep {
@@ -224,37 +297,16 @@ export function genFormulaWord(kind: 'rect' | 'square' = pick(['rect', 'square']
   const fig: Figure = rect
     ? { type: 'shape', polys: [{ pts: rectPts(0, 0, 6, 4), role: 'main' }], dims: edgeDims(rectPts(0, 0, 6, 4), '', [1, 2], (i) => (i === 0 ? '横' : 'たて')) }
     : { type: 'shape', polys: [{ pts: rectPts(0, 0, 4, 4), role: 'main' }], dims: edgeDims(rectPts(0, 0, 4, 4), '', [1, 2, 3], () => '1辺') };
-  const step = rect
-    ? choiceStep({
-      label: '公式', prompt: '長方形の 面積 ＝ ？', correct: 'たて × 横',
-      wrongs: [
-        { text: '（たて ＋ 横）× 2', note: 'それは 長方形の まわりの 長さの 式だよ。' },
-        { text: 'たて ＋ 横', note: '面積は たし算では 出ないよ。1cm²が たてに □こ、横に □こ ならぶ…。' },
-        { text: 'たて × たて', note: 'たて と 横、2つの 長さを 使うよ。' },
-      ],
-      why: '1cm²の 正方形が たてに たての数、横に 横の数 ならぶから、たて × 横（横 × たて でも よい）。',
-      hints: ['1cm²の 正方形が 何こ ならぶかを 考えよう。', '1れつに 横の数だけ ならび、それが たての数だけ ある。', 'かけ算で 求められる。'],
-    })
-    : choiceStep({
-      label: '公式', prompt: '正方形の 面積 ＝ ？', correct: '1辺 × 1辺',
-      wrongs: [
-        { text: '1辺 × 4', note: 'それは 正方形の まわりの 長さの 式だよ。' },
-        { text: '1辺 ＋ 1辺', note: '面積は たし算では 出ないよ。' },
-        { text: '1辺 × 2', note: 'たても 横も 1辺と 同じ 長さ。たて×横 に あてはめよう。' },
-      ],
-      why: '正方形は たて も 横も 1辺の 長さ。だから 1辺 × 1辺。',
-      hints: ['正方形は 4つの 辺の 長さが 同じ。', '長方形の 公式「たて × 横」に あてはめよう。', 'たても 横も「1辺」。'],
-    });
   return fin({
     skillId: 'formula-word', title: `${name}の 面積の 公式`, emoji: '📐',
-    text: `${name}の 面積を 求める 公式を えらびましょう。`,
-    figure: fig, steps: [step],
+    text: `${name}の 面積を 求める 公式を、カードを おいて 書きましょう。`,
+    figure: fig, steps: [formulaWordStep(kind)],
     summary: rect ? '長方形の 面積 ＝ たて × 横（横 × たて）' : '正方形の 面積 ＝ 1辺 × 1辺',
     label: `${name}の 公式`, q: `${name}の面積を求める公式`, a: rect ? 'たて×横' : '1辺×1辺',
   });
 }
 
-function rectQuestion(skillId: string, title: string, a: number, b: number, unit: string, o: { square?: boolean; text?: string; emoji?: string } = {}): Question {
+function rectQuestion(skillId: string, title: string, a: number, b: number, unit: string, o: { square?: boolean; text?: string; emoji?: string; formula?: boolean } = {}): Question {
   const area = a * b;
   const name = o.square ? '正方形' : '長方形';
   return fin({
@@ -262,6 +314,7 @@ function rectQuestion(skillId: string, title: string, a: number, b: number, unit
     text: o.text ?? (o.square ? `1辺が ${a}${unit}の 正方形の 面積を 求めましょう。` : `たてが ${a}${unit}、横が ${b}${unit}の 長方形の 面積を 求めましょう。`),
     figure: rectFig(a, b, unit),
     steps: [
+      ...(o.formula ? [formulaWordStep(o.square ? 'square' : 'rect')] : []),
       mulExpr(a, b, {
         hints: [o.square ? '正方形の 面積 ＝ 1辺 × 1辺' : '長方形の 面積 ＝ たて × 横', '図の 長さを 公式に あてはめよう。', o.square ? `1辺は ${a}${unit}。` : `たては ${a}${unit}、横は ${b}${unit}。`],
         diagnose: diagnoseRectExpr(a, b),
@@ -282,14 +335,15 @@ export function genFormulaRect(): Question {
     const a = rnd(2, 15), b = rnd(2, 15);
     if (a === b || Math.max(a, b) > 4 * Math.min(a, b)) continue;
     const unit = pick(['cm', 'cm', 'm']);
-    return rectQuestion('formula-rect', '長方形の 面積', a, b, unit);
+    return rectQuestion('formula-rect', '長方形の 面積', a, b, unit, { formula: true });
   }
 }
 
-export function genFormulaSquare(): Question {
+/** withFormula: 練習では はじめに 公式を カードで 組み立てる。本番テストの大問6①は 式と答えだけ（紙と同じ） */
+export function genFormulaSquare(withFormula = true): Question {
   const a = rnd(3, 15);
   const unit = pick(['cm', 'cm', 'm']);
-  return rectQuestion('formula-square', '正方形の 面積', a, a, unit, { square: true, emoji: '🟦' });
+  return rectQuestion('formula-square', '正方形の 面積', a, a, unit, { square: true, emoji: '🟦', formula: withFormula });
 }
 
 export function genFormulaUnit(): Question {
@@ -298,31 +352,51 @@ export function genFormulaUnit(): Question {
     if (a === b || a * b === 2 * (a + b)) continue;
     const unit = pick(['cm', 'm']);
     const area = a * b, per = 2 * (a + b);
+    const other = unit === 'cm' ? 'm' : 'cm';
+    const unitCards = [`${unit}²`, unit, `${other}²`, other];
+    const sq = `${unit}²`;
+    const ask = (what: '面積' | 'まわりの 長さ', ok: [number, string], numNote: (n: number) => string | null, unitNote: (u: string) => string | null, scaffold: ChoiceStep): BuildStep => buildStep({
+      label: what, prompt: `この 長方形の ${what}を、数と 単位の カードを おいて 書こう。`,
+      layout: [`${what} ＝`, { slot: 0 }, { slot: 1 }],
+      cards: [String(area), String(per), String(a + b), ...unitCards],
+      accept: [[String(ok[0]), ok[1]]],
+      diagnose: (v) => numNote(Number(v[0])) ?? unitNote(v[1]!) ?? (v[0] === String(ok[0]) && v[1] === ok[1] ? null : 'もう一度 数と 単位を 見なおそう。'),
+      hints: what === '面積'
+        ? ['面積は たて × 横。', `長さの 単位は ${unit}、広さの 単位は ${unit}²。`, `${a} × ${b} を 計算しよう。`]
+        : ['まわりの 長さは 4本の 辺の 長さの 合計。', `たて ${a}${unit} が 2本、横 ${b}${unit} が 2本。`, `（${a} ＋ ${b}）× 2`],
+      scaffold,
+    });
     return fin({
       skillId: 'formula-unit', title: '面積と まわりの 長さ', emoji: '🔍',
       text: `たてが ${a}${unit}、横が ${b}${unit}の 長方形が あります。`,
       figure: rectFig(a, b, unit),
       steps: [
-        choiceStep({
-          label: '面積', prompt: 'この 長方形の 面積は どれ？', correct: `${area}${unit}²`,
-          wrongs: [
-            { text: `${per}${unit}`, note: 'それは まわりの 長さ。面積は たて × 横 で、単位は ' + unit + '²。' },
-            { text: `${area}${unit}`, note: '数は 合っているよ。面積の 単位は ' + unit + '²（平方' + (unit === 'cm' ? 'センチ' : '') + 'メートル）。' },
-            { text: `${per}${unit}²`, note: 'まわりの 長さの 数に なっているよ。たて × 横 を 計算しよう。' },
-          ],
-          why: `面積は ${a} × ${b} ＝ ${area}。広さの 単位は ${unit}²。`,
-          hints: ['面積は たて × 横。', `長さの 単位は ${unit}、広さの 単位は ${unit}²。`, `${a} × ${b} を 計算しよう。`],
-        }),
-        choiceStep({
-          label: 'まわりの長さ', prompt: 'まわりの 長さは どれ？', correct: `${per}${unit}`,
-          wrongs: [
-            { text: `${area}${unit}`, note: 'それは 面積の 数。まわりの 長さは 4つの 辺を たす。' },
-            { text: `${a + b}${unit}`, note: 'たて と 横を 1本ずつ しか たして いないよ。辺は 4本。' },
-            { text: `${per}${unit}²`, note: '長さの 単位は ' + unit + '。' + unit + '² は 広さの 単位。' },
-          ],
-          why: `まわりの 長さは（${a} ＋ ${b}）× 2 ＝ ${per}${unit}。長さの 単位は ${unit}。`,
-          hints: ['まわりの 長さは 4本の 辺の 長さの 合計。', `たて ${a}${unit} が 2本、横 ${b}${unit} が 2本。`, `（${a} ＋ ${b}）× 2`],
-        }),
+        ask('面積', [area, sq],
+          (n) => (n === per ? 'それは まわりの 長さの 数。面積は たて × 横。' : n === a + b ? 'たし算に なっているよ。面積は かけ算。' : null),
+          (u) => (LENGTH_UNITS.includes(u) ? `長さの 単位（${u}）だよ。面積は 2つの 長さを かけるから ${u}² のように 2 が付くよ。` : u === sq ? null : `${u} ではなく、図の 長さの 単位は ${unit} だよ。${unit}² を つかおう。`),
+          choiceStep({
+            label: '面積', prompt: 'この 長方形の 面積は どれ？', correct: `${area}${unit}²`,
+            wrongs: [
+              { text: `${per}${unit}`, note: 'それは まわりの 長さ。面積は たて × 横 で、単位は ' + unit + '²。' },
+              { text: `${area}${unit}`, note: '数は 合っているよ。面積の 単位は ' + unit + '²。' },
+              { text: `${per}${unit}²`, note: 'まわりの 長さの 数に なっているよ。たて × 横 を 計算しよう。' },
+            ],
+            why: `面積は ${a} × ${b} ＝ ${area}。広さの 単位は ${unit}²。`,
+            hints: ['面積は たて × 横。', `長さの 単位は ${unit}、広さの 単位は ${unit}²。`, `${a} × ${b} を 計算しよう。`],
+          })),
+        ask('まわりの 長さ', [per, unit],
+          (n) => (n === area ? 'それは 面積の 数。まわりの 長さは 4つの 辺を たす。' : n === a + b ? 'たて と 横を 1本ずつ しか たして いないよ。辺は 4本。' : null),
+          (u) => (u === unit ? null : u === sq ? `長さの 単位は ${unit}。${sq} は 広さの 単位だよ。` : `図の 長さの 単位は ${unit} だよ。`),
+          choiceStep({
+            label: 'まわりの長さ', prompt: 'まわりの 長さは どれ？', correct: `${per}${unit}`,
+            wrongs: [
+              { text: `${area}${unit}`, note: 'それは 面積の 数。まわりの 長さは 4つの 辺を たす。' },
+              { text: `${a + b}${unit}`, note: 'たてと 横を 1本ずつ しか たして いないよ。辺は 4本。' },
+              { text: `${per}${unit}²`, note: '長さの 単位は ' + unit + '。' + unit + '² は 広さの 単位。' },
+            ],
+            why: `まわりの 長さは（${a} ＋ ${b}）× 2 ＝ ${per}${unit}。長さの 単位は ${unit}。`,
+            hints: ['まわりの 長さは 4本の 辺の 長さの 合計。', `たて ${a}${unit} が 2本、横 ${b}${unit} が 2本。`, `（${a} ＋ ${b}）× 2`],
+          })),
       ],
       summary: `面積 ${area}${unit}²（たて×横）、まわりの 長さ ${per}${unit}（4本の 辺の 合計）。単位も ちがう。`,
       label: `面積と まわり（${a}×${b}）`, q: `たて${a}${unit}・横${b}${unit}の長方形の面積とまわりの長さ`, a: `${area}${unit}²、${per}${unit}`, figArea: area,
@@ -374,6 +448,14 @@ const SQUARE_UNITS: { side: string; unit: string }[] = [
   { side: '1cm', unit: 'cm²' }, { side: '1m', unit: 'm²' }, { side: '10m', unit: 'a' }, { side: '100m', unit: 'ha' }, { side: '1km', unit: 'km²' },
 ];
 
+/** 単位カードを おいて 書く問題（unit-aha と unit-choose で共通）。cards は 面積の単位 5つ ＋ 長さの単位 3つ */
+function unitBuildStep(o: { label: string; prompt: string; lead: string; correct: string; scaffold: ChoiceStep; hints: string[] }): BuildStep {
+  return buildStep({
+    label: o.label, prompt: o.prompt, layout: [o.lead, { slot: 0 }], cards: ALL_UNITS, accept: [[o.correct]],
+    diagnose: (v) => diagnoseUnit(o.correct)(v[0]!) ?? null, hints: o.hints, scaffold: o.scaffold,
+  });
+}
+
 export function genUnitAha(kind: '10m' | '100m' | 'any' = 'any'): Question {
   const v = kind !== 'any' ? kind : pick(['10m', '100m', 'side', 'side', 'num', 'num', 'num'] as const);
   if (v !== 'num') {
@@ -385,13 +467,17 @@ export function genUnitAha(kind: '10m' | '100m' | 'any' = 'any'): Question {
     };
     return fin({
       skillId: 'unit-aha', title: `1辺${target.side}の 正方形`, emoji: '🌾',
-      text: '□に あてはまる 面積の 単位を えらびましょう。',
+      text: '□に あてはまる 面積の 単位を、カードを おいて 書きましょう。',
       figure: { type: 'shape', polys: [{ pts: rectPts(0, 0, 4, 4), role: 'main' }], dims: edgeDims(rectPts(0, 0, 4, 4), '', [1, 2], () => target.side), center: '1□' },
-      steps: [choiceStep({
-        label: '単位', prompt: `1辺が ${target.side}の 正方形の 面積 ＝ 1□`, correct: target.unit,
-        wrongs: others.map((u) => ({ text: u.unit, note: note(u.unit) })),
-        why: `1辺が ${target.side}の 正方形の 面積を 1${target.unit} という。`,
-        hints: ['1辺 10m の 正方形 ＝ 1a（アール）。', '1辺 100m の 正方形 ＝ 1ha（ヘクタール）。', '1辺 1m なら 1m²、1辺 1km なら 1km²。'],
+      steps: [unitBuildStep({
+        label: '単位', prompt: `1辺が ${target.side}の 正方形の 面積 ＝ 1□`, lead: `1辺が ${target.side}の 正方形の 面積 ＝ 1`, correct: target.unit,
+        hints: ['1辺の 長さを かけた 広さの 単位を 考えよう。', '1辺 10m の 正方形 ＝ 1a（アール）、1辺 100m の 正方形 ＝ 1ha（ヘクタール）。', '1辺 1m なら 1m²、1辺 1km なら 1km²。'],
+        scaffold: choiceStep({
+          label: '単位', prompt: `1辺が ${target.side}の 正方形の 面積 ＝ 1□`, correct: target.unit,
+          wrongs: others.map((u) => ({ text: u.unit, note: note(u.unit) })),
+          why: `1辺が ${target.side}の 正方形の 面積を 1${target.unit} という。`,
+          hints: ['1辺 10m の 正方形 ＝ 1a（アール）。', '1辺 100m の 正方形 ＝ 1ha（ヘクタール）。', '1辺 1m なら 1m²、1辺 1km なら 1km²。'],
+        }),
       })],
       summary: '1辺 10m → 1a（＝100m²）、1辺 100m → 1ha（＝10000m²）',
       label: `1辺${target.side} → 1${target.unit}`, q: `1辺が${target.side}の正方形の面積＝1□`, a: target.unit,
@@ -454,12 +540,16 @@ export function genUnitChoose(onlyCmM = false): Question {
   const others = onlyCmM ? [it.unit === 'cm²' ? 'm²' : 'cm²'] : shuffle((['cm²', 'm²', 'a', 'ha', 'km²'] as const).filter((u) => u !== it.unit)).slice(0, 3);
   return fin({
     skillId: 'unit-choose', title: '単位えらび', emoji: '🏫',
-    text: `□に あてはまる 面積の 単位を えらびましょう。`,
-    steps: [choiceStep({
-      label: '単位', prompt: `${it.thing} …… ${it.value}□`, correct: it.unit,
-      wrongs: others.map((u) => ({ text: u, note: `${it.value}${u} だと 広さが ぜんぜん ちがうよ。${UNIT_NOTE[u]}` })),
-      why: `${UNIT_NOTE[it.unit]} だから ${it.thing}は ${it.value}${it.unit}。`,
+    text: `□に あてはまる 面積の 単位を、カードを おいて 書きましょう。`,
+    steps: [unitBuildStep({
+      label: '単位', prompt: `${it.thing} …… ${it.value}□`, lead: `${it.thing} ……  ${it.value}`, correct: it.unit,
       hints: ['1辺 1cm、1m、10m、100m、1km の 正方形を 思いうかべよう。', `${it.value}こ ならべた ときの 広さを 考えよう。`, UNIT_NOTE[it.unit]!.split('。')[0] + '。'],
+      scaffold: choiceStep({
+        label: '単位', prompt: `${it.thing} …… ${it.value}□`, correct: it.unit,
+        wrongs: others.map((u) => ({ text: u, note: `${it.value}${u} だと 広さが ぜんぜん ちがうよ。${UNIT_NOTE[u]}` })),
+        why: `${UNIT_NOTE[it.unit]} だから ${it.thing}は ${it.value}${it.unit}。`,
+        hints: ['1辺 1cm、1m、10m、100m、1km の 正方形を 思いうかべよう。', `${it.value}こ ならべた ときの 広さを 考えよう。`, UNIT_NOTE[it.unit]!.split('。')[0] + '。'],
+      }),
     })],
     summary: `${it.thing}は 約 ${it.value}${it.unit}。`,
     label: `${it.thing} ${it.value}${it.unit}`, q: `${it.thing}…${it.value}□（面積の単位）`, a: it.unit,
@@ -495,15 +585,23 @@ export function genUnitRelation(): Question {
       skillId: 'unit-relation', title: '1辺が 10倍だと', emoji: '🔟',
       text: '正方形の 1辺の 長さを 10倍に すると、面積は 何倍に なりますか。',
       figure: UNIT_TABLE,
-      steps: [choiceStep({
-        label: '何倍', prompt: '面積は？', correct: '100倍',
-        wrongs: [
-          { text: '10倍', note: 'たて も 横も 10倍。10 × 10 倍だよ。' },
-          { text: '20倍', note: 'たして いないかな？ たて も 横も 10倍 だから かけ算。' },
-          { text: '1000倍', note: '0が 1つ 多いよ。10 × 10 ＝ 100。' },
-        ],
-        why: 'たて も 横も 10倍 だから、面積は 10 × 10 ＝ 100倍。だから 面積の 単位は 100倍ずつ（1m² → 1a → 1ha → 1km²）。',
+      steps: [numStep({
+        label: '何倍', prompt: '面積は 何倍？', answer: 100, unit: '倍',
         hints: ['表の 1m と 10m、1m² と 1a を くらべよう。', 'たて も 横も 10倍に なる。', '1a ＝ 100m²'],
+        diagnose: (x) => same(x, 100) ? null
+          : same(x, 10) ? 'たて も 横も 10倍。10 × 10 倍だよ。'
+            : same(x, 20) ? 'たして いないかな？ たて も 横も 10倍 だから かけ算。'
+              : same(x, 1000) ? '0が 1つ 多いよ。10 × 10 ＝ 100。' : null,
+        scaffold: choiceStep({
+          label: '何倍', prompt: '面積は？', correct: '100倍',
+          wrongs: [
+            { text: '10倍', note: 'たて も 横も 10倍。10 × 10 倍だよ。' },
+            { text: '20倍', note: 'たして いないかな？ たて も 横も 10倍 だから かけ算。' },
+            { text: '1000倍', note: '0が 1つ 多いよ。10 × 10 ＝ 100。' },
+          ],
+          why: 'たて も 横も 10倍 だから、面積は 10 × 10 ＝ 100倍。だから 面積の 単位は 100倍ずつ（1m² → 1a → 1ha → 1km²）。',
+          hints: ['表の 1m と 10m、1m² と 1a を くらべよう。', 'たて も 横も 10倍に なる。', '1a ＝ 100m²'],
+        }),
       })],
       summary: '1辺が 10倍 → 面積は 100倍',
       label: '1辺10倍 → 面積100倍', q: '1辺を10倍にすると面積は何倍', a: '100倍',

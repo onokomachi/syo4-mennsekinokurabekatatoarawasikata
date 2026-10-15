@@ -10,10 +10,13 @@
  *  6. 図: 図（方眼のマス・多角形）から面積を計算し直して、figArea と一致する。
  *     「答え」の段が figArea と同じ単位なら、答えとも一致する
  *  7. 長さの文字（寸法）が、辺の長さと一致する（数字と単位から読む）
+ *  7b. カードで組み立てる欄: 正解の書き方（同じ意味の別の書き方もすべて）が通る / カードで作れる全部の置き方のうち、
+ *      正解でないものは通らず、ひとことの声かけが返る / 当てずっぽうの当たる率が 1/8 以下 / ダミーが2まい以上 /
+ *      足場（選ぶ形）がある
  *  8. 出題のバリエーションが 20通り以上 / 選択式の正解の位置が 1か所に半分以上かたよらない
  */
 import { GENERATORS, generate } from '../src/lib/problems';
-import { same, fmt, figureArea, type Question, type Step, type FillToken } from '../src/lib/question';
+import { same, fmt, figureArea, buildOk, type Question, type Step, type FillToken, type BuildStep } from '../src/lib/question';
 import { MODULES } from '../src/constants';
 import { TEST_STEPS, OMOTE_MAX, URA_MAX } from '../src/lib/testConfig';
 import { EXTRA_SKILLS } from '../src/lib/trialConfig';
@@ -30,12 +33,48 @@ const MAX_CHARS = 7;
 
 function signature(q: Question): string {
   const f = q.figure ? JSON.stringify(q.figure) : '';
-  const st = q.steps.map((s) => (s.kind === 'num' ? `N${s.answer}` : s.kind === 'choice' ? `C${s.choices.join('|')}` : s.kind === 'fill' ? `F${s.accept[0]!.join(',')}` : s.kind === 'plot' ? `P${JSON.stringify(s.points)}` : `S${s.prompt}`)).join(';');
+  const st = q.steps.map((s) => (s.kind === 'num' ? `N${s.answer}` : s.kind === 'choice' ? `C${s.choices.join('|')}` : s.kind === 'fill' ? `F${s.accept[0]!.join(',')}` : s.kind === 'plot' ? `P${JSON.stringify(s.points)}` : s.kind === 'build' ? `B${s.accept[0]!.join(',')}${s.cards.join('')}` : `S${s.prompt}`)).join(';');
   return `${q.text}#${f}#${st}`;
 }
 
 function slotCount(tokens: FillToken[]): number {
   return tokens.filter((t) => typeof t === 'object').length;
+}
+
+/** カードで作れる全部の置き方（同じカードは1まいずつ。文字が同じ置き方は1つに数える） */
+function allPlacements(s: BuildStep): string[][] {
+  const slots = s.accept[0]!.length;
+  const out = new Map<string, string[]>();
+  const rec = (used: number[], cur: string[]) => {
+    if (cur.length === slots) { out.set(cur.join('\u0001'), cur); return; }
+    s.cards.forEach((c, i) => { if (!used.includes(i)) rec([...used, i], [...cur, c]); });
+  };
+  rec([], []);
+  return [...out.values()];
+}
+
+function checkBuild(id: string, tag: string, s: BuildStep) {
+  const slots = s.layout.filter((t) => typeof t === 'object').length;
+  const place = allPlacements(s);
+  let rightN = 0;
+  for (const acc of s.accept) {
+    if (acc.length !== slots) fail(id, `${tag}: 置き場所 ${slots}こ なのに 正解の組が ${acc.length}こ`);
+    if (!place.some((p) => p.join('\u0001') === acc.join('\u0001'))) fail(id, `${tag}: 正解 ${acc.join('・')} が カードで作れない`);
+    if (!buildOk(s, acc)) fail(id, `${tag}: 正解 ${acc.join('・')} が 通らない`);
+    if (s.diagnose && s.diagnose(acc) !== null) fail(id, `${tag}: 正解 ${acc.join('・')} で 声かけが 出る`);
+  }
+  for (const p of place) {
+    if (buildOk(s, p)) { rightN++; continue; }
+    const note = s.diagnose?.(p) ?? null;
+    if (note === null) fail(id, `${tag}: まちがいの置き方 ${p.join('・')} に 声かけが ない`);
+    // 長さの単位（cm・m・km）を面積のところに置いたら、「長さの 単位」と教える声かけが返る
+    else if (p.some((c) => ['cm', 'm', 'km'].includes(c)) && s.cards.includes('km²') && !note.includes('長さ')) fail(id, `${tag}: 長さの単位を置いた ${p.join('・')} の声かけに「長さ」が ない`);
+  }
+  if (rightN !== new Set(s.accept.map((a) => a.join('\u0001'))).size) fail(id, `${tag}: 通る置き方が ${rightN}通り（accept は ${s.accept.length}通り）`);
+  if (rightN / place.length > 1 / 8) fail(id, `${tag}: 当てずっぽうが 当たりやすい（${rightN}/${place.length}）`);
+  const needed = Math.max(...s.accept.map((a) => a.length));
+  if (s.cards.length - needed < 2) fail(id, `${tag}: ダミーのカードが ${s.cards.length - needed}まい（2まい以上）`);
+  if (!s.scaffold) fail(id, `${tag}: 足場（選ぶ形）が ない`);
 }
 
 function checkStep(id: string, s: Step, stepNo: number) {
@@ -48,6 +87,7 @@ function checkStep(id: string, s: Step, stepNo: number) {
     if (s.diagnose && s.diagnose(s.answer) !== null) fail(id, `${tag}: 正答 ${s.answer} で誤答診断が反応する`);
     const a = fmt(s.answer);
     if (a.length >= 3 && s.hints[0]?.includes(a)) fail(id, `${tag}: 1段めのヒントが答え ${a} を言っている`);
+    if (s.scaffold) checkStep(id, s.scaffold, stepNo);
   } else if (s.kind === 'choice') {
     if (s.correct < 0 || s.correct >= s.choices.length) fail(id, `${tag}: 正解の位置が範囲外`);
     if (new Set(s.choices).size !== s.choices.length) fail(id, `${tag}: 選択肢に重複 ${s.choices.join(' / ')}`);
@@ -59,6 +99,9 @@ function checkStep(id: string, s: Step, stepNo: number) {
         if (i !== s.correct && w === null) fail(id, `${tag}: まちがいの選択肢 ${i} に助言がない`);
       });
     }
+  } else if (s.kind === 'build') {
+    checkBuild(id, tag, s);
+    if (s.scaffold) checkStep(id, s.scaffold, stepNo);
   } else if (s.kind === 'fill') {
     const n = s.layout.type === 'expr' ? slotCount(s.layout.parts) : s.layout.rows.reduce((a, r) => a + slotCount(r), 0);
     if (s.accept.length === 0) fail(id, `${tag}: 正解の組が無い`);
