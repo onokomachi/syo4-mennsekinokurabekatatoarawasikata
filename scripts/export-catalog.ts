@@ -18,7 +18,7 @@ const catalog = buildCatalog({
   title: '面積のくらべ方と表し方',
   subject: '算数',
   grade: 4,
-  url: 'https://syo4-mennsekinokurabekatatoarawasikata.vercel.app',
+  url: 'https://syo4-mennsekinokurabekatatoarawasik.vercel.app',
   moduleLevels: Object.fromEntries(MODULES.map((m) => [m.id, m.levels])),
   moduleTitles: Object.fromEntries(MODULES.map((m) => [m.id, m.title])),
   allSkillIds: ALL_LEVEL_IDS,
