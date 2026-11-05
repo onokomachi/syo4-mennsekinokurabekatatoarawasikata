@@ -17,6 +17,8 @@
   名前を変えたら学級ポータルのカタログも作り直す（`npm run catalog > ../learning-app-kit/src/catalog/menseki4.ts`、誤概念は `scripts/export-catalog.ts` に手で書く）。
 - 本番テストは紙のテスト（新学社 4年東 下巻）と同じ大問・配点（表100・裏50・いかそう参考）。localStorage のキーは `menseki4_*`。
 - 共通ファイル（`useAdaptive.ts` など）はここで直さない。
+- **動画・画像などの大きな素材は、このアプリの `public/` に入れない**（2026-11-05）。共通置き場 `onokomachi/learning-media`（`https://learning-media-snowy.vercel.app`）に置き、`src/lib/media.ts` の `media('/videos/…')` で読む。
+  `public/` に入れると、直すたびのデプロイで同じ動画が丸ごと保存され、Vercel の Deployment Storage（10GB）を使いきる。置き場のファイルは上書きしない（新しい名前で足す）。
 
 ## 確かめ方
 - `npm run check`（学級ポータルのルール点検・型チェック・問題の機械検査・ビルド）
