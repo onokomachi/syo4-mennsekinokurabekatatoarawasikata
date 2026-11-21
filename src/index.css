@@ -60,58 +60,58 @@
   /* ▼ 特別解放テーマ（バッジ収集で解放）。いずれも「暗い背景 × ネオン」系。
      --neon(r,g,b)/--panel/--panel-strong は §共有オーバーライドで使う追加トークン。 */
 
-  /* 桜吹雪（さくらふぶき）= 夜桜：漆黒の夜空 × 舞い散る桜の花びら × ピンクのネオン。バッジ50%で解放 */
+  /* まどあかりの街 = 夕やみの街あかり：紺の夜空 × 窓のあかり × サーチライトとヒーローの流れ星。バッジ50%で解放 */
   body[data-theme='sakura'] {
-    --c-bg: #0d0416;
-    --c-surface: #170a22;
-    --c-surface-2: #0a020f;
-    --c-surface-3: #221033;
-    --c-content: #ffd3e4;
-    --c-muted: #e08fb4;
-    --c-faint: #a05f85;
-    --c-line: #7c3a63;
-    --c-brand: #ff7bac;
-    --c-brand-strong: #ffb3cf;
-    --c-on-brand: #23000f;
-    --neon: 255, 140, 185;
-    --panel: #1a0b24;
-    --panel-strong: rgba(120, 40, 85, 0.85);
+    --c-bg: #0b1226;
+    --c-surface: #131c38;
+    --c-surface-2: #080e20;
+    --c-surface-3: #1c2a52;
+    --c-content: #fff3d6;
+    --c-muted: #bcc9e8;
+    --c-faint: #7f8fb8;
+    --c-line: #3b4d86;
+    --c-brand: #ffd25e;
+    --c-brand-strong: #ffe79a;
+    --c-on-brand: #231a00;
+    --neon: 255, 210, 100;
+    --panel: #0f1730;
+    --panel-strong: rgba(40, 60, 130, 0.85);
   }
 
-  /* インフェルノ = 業火：黒曜石の闇 × 立ちのぼる火の粉 × 深紅の炎。バッジ75%で解放 */
+  /* ヒーローコミック = アメコミ予告のポスター：濃い紫 × 黄色のコマ枠 × 網点。バッジ75%で解放（ボス戦もここで挑戦できる） */
   body[data-theme='inferno'] {
-    --c-bg: #0a0100;
-    --c-surface: #180502;
-    --c-surface-2: #0c0200;
-    --c-surface-3: #240903;
-    --c-content: #ffb37a;
-    --c-muted: #e0713a;
-    --c-faint: #9c4a22;
-    --c-line: #86341a;
-    --c-brand: #ff5a1f;
-    --c-brand-strong: #ff9558;
-    --c-on-brand: #1c0500;
-    --neon: 255, 100, 30;
-    --panel: #1c0703;
-    --panel-strong: rgba(130, 40, 5, 0.85);
+    --c-bg: #1a1033;
+    --c-surface: #251847;
+    --c-surface-2: #130b2a;
+    --c-surface-3: #33205f;
+    --c-content: #fff4e0;
+    --c-muted: #d9c6ff;
+    --c-faint: #9783c9;
+    --c-line: #6a4bb0;
+    --c-brand: #ffd23f;
+    --c-brand-strong: #ffe685;
+    --c-on-brand: #261a00;
+    --neon: 255, 200, 70;
+    --panel: #1d1240;
+    --panel-strong: rgba(110, 50, 160, 0.85);
   }
 
-  /* 天空神（てんくうしん）= 神々の空：黄昏の大空 × 金色の光条 × 流れる雲。バッジ100%で解放 */
+  /* 超翔神（ちょうしょうしん）= 空をとぶヒーロー猫：群青の空 × 赤いマント × 白いスピードライン。バッジ100%で解放 */
   body[data-theme='tenkuu'] {
-    --c-bg: #041022;
-    --c-surface: #0a1c34;
-    --c-surface-2: #030b1a;
-    --c-surface-3: #12294a;
-    --c-content: #ffe9a8;
-    --c-muted: #a8cbe8;
-    --c-faint: #6d8fb5;
-    --c-line: #3c608c;
-    --c-brand: #ffd24a;
-    --c-brand-strong: #ffe58f;
-    --c-on-brand: #221a00;
-    --neon: 255, 215, 120;
-    --panel: #081a30;
-    --panel-strong: rgba(60, 100, 160, 0.82);
+    --c-bg: #0a1736;
+    --c-surface: #122354;
+    --c-surface-2: #08122d;
+    --c-surface-3: #1b3270;
+    --c-content: #fff1e8;
+    --c-muted: #bcd0f5;
+    --c-faint: #7d97c9;
+    --c-line: #3a5aa8;
+    --c-brand: #ff5a4f;
+    --c-brand-strong: #ff9a90;
+    --c-on-brand: #2a0503;
+    --neon: 255, 110, 95;
+    --panel: #0e1c46;
+    --panel-strong: rgba(160, 40, 40, 0.80);
   }
 
   /* 極光（きょっこう）= オーロラ：北極の夜空 × 緑＋紫の光のカーテン。バッジ75%で解放 */
@@ -153,9 +153,9 @@
 
   /* スマホの FOUC・合成誤差対策: 暗背景テーマは背景色を確実に固定する */
   body[data-theme='aurora'] { background-color: #020309 !important; }
-  body[data-theme='sakura'] { background-color: #0d0416 !important; }
-  body[data-theme='inferno'] { background-color: #0a0100 !important; }
-  body[data-theme='tenkuu'] { background-color: #041022 !important; }
+  body[data-theme='sakura'] { background-color: #0b1226 !important; }
+  body[data-theme='inferno'] { background-color: #1a1033 !important; }
+  body[data-theme='tenkuu'] { background-color: #0a1736 !important; }
 
   /* 極光：やわらかな緑白の発光（オーロラ） */
   body[data-theme='aurora'] {
@@ -163,22 +163,22 @@
     text-shadow: 0 0 5px rgba(120, 255, 170, 0.4), 0 0 12px rgba(150, 120, 255, 0.25);
     letter-spacing: 0.03em;
   }
-  /* 桜吹雪：ほんのり桜色の発光 */
+  /* まどあかりの街：ほんのり 黄色の窓あかり */
   body[data-theme='sakura'] {
     font-family: "BIZ UDPGothic", "Inter", ui-sans-serif, sans-serif;
-    text-shadow: 0 0 5px rgba(255, 140, 185, 0.35), 0 0 12px rgba(255, 140, 185, 0.18);
+    text-shadow: 0 0 5px rgba(255, 210, 100, 0.35), 0 0 12px rgba(120, 160, 255, 0.2);
     letter-spacing: 0.03em;
   }
-  /* インフェルノ：炎のゆらめく発光 */
+  /* ヒーローコミック：黄色のあたたかい発光 */
   body[data-theme='inferno'] {
     font-family: "BIZ UDPGothic", "Inter", ui-sans-serif, sans-serif;
-    text-shadow: 0 0 5px rgba(255, 100, 30, 0.45), 0 0 14px rgba(255, 60, 0, 0.22);
+    text-shadow: 0 0 5px rgba(255, 200, 70, 0.4), 0 0 12px rgba(190, 150, 255, 0.2);
     letter-spacing: 0.03em;
   }
-  /* 天空神：神々しい金色の光 */
+  /* 超翔神：赤い光と白いきらめき */
   body[data-theme='tenkuu'] {
     font-family: "BIZ UDPGothic", "Inter", ui-sans-serif, sans-serif;
-    text-shadow: 0 0 5px rgba(255, 215, 120, 0.45), 0 0 12px rgba(160, 200, 255, 0.22);
+    text-shadow: 0 0 5px rgba(255, 110, 95, 0.45), 0 0 12px rgba(255, 245, 210, 0.22);
     letter-spacing: 0.03em;
   }
 }
@@ -292,7 +292,7 @@ body[data-theme='dark'] .calc-cell {
    背景は「純黒 ＋ 緑のデジタルレイン」だけにして、余計な縞を一切重ねない。 */
 
 /* =====================================================================
- * 特別解放テーマ（極光 / 桜吹雪 / インフェルノ / 天空神）の共通オーバーライド。
+ * 特別解放テーマ（極光 / まどあかりの街 / ヒーローコミック / 超翔神）の共通オーバーライド。
  * 3テーマとも「暗背景 × ネオン」系なので、ハードコードされた明るい固定色を
  * テーマ別トークン（--neon / --panel / --panel-strong / --c-content）で
  * まとめて変換する。:is() で3テーマを1つのセレクタにまとめている。
