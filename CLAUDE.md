@@ -22,8 +22,7 @@
 
 - **テーマ（背景）の世界観と、内部IDの対応**（2026-11-21。街あかりとヒーローの世界。ボスは「超翔神（ちょうしょうしん）」＝空をとぶヒーロー猫）：ノーマル `light`／マトリックス `dark`（最初から）→ 25% 極光 `aurora`（既存。オーロラ）→ 50% まどあかりの街 `sakura`（`CityWindowsBackground`。プログラムで描く）→ 75% ヒーローコミック `inferno`（`ComicVideoBackground`。動画）→ 100% 超翔神 `tenkuu`（`ChoushoBackground`。ボス戦の待機動画＋演出）。
   **内部ID（`settingsStore` の Theme・保存データ・CSS の `body[data-theme]`）は変えない**。表示名・見た目・色（`index.css` のトークン）・背景コンポーネントだけを入れかえた。ボス戦は `inferno`（ヒーローコミック）の解放で挑戦できる（`Hub.tsx`・`BossBattleModule.tsx`）。
-  動画は共通の置き場 `learning-media` の `videos/menseki4/{boss,theme}/`（`boss`＝待機 idle・こうげき attack-normal・poster、`theme`＝loop・poster）。480p・20fps・mp4＋webm。**置き場のファイルは上書きしない**（変えるときは新しい名前で足す）。
-  **ため攻撃の動画（`attack-special`）はまだ無い**（元の動画が10MB超で取りこめなかった）。できるまでは `BossBattleModule` の `VIDEO.special` が通常こうげきと同じ動画を使う。足したら `VIDEO.special` を新しい名前に向ける。
+  動画は共通の置き場 `learning-media` の `videos/menseki4/{boss,theme}/`（`boss`＝待機 idle・こうげき attack-normal・ため攻撃 attack-special・poster、`theme`＝loop・poster）。480p・20fps・mp4＋webm。**置き場のファイルは上書きしない**（変えるときは新しい名前で足す）。
   `ThemeVideo`（動画レイヤー）・`canvasLoop`（canvas を約30fps で動かす共通の部品）・`ChoushoName`（「超翔」にふりがな）は `src/components/ui/`。背景を足す・直すときは、その3つを使う（動画は無音・タブが裏なら止める・「動きを減らす」では静止画）。
 
 ## 確かめ方

@@ -32,8 +32,7 @@ interface Props { onExit: () => void; }
 const VIDEO = {
   idle: { mp4: media('/videos/menseki4/boss/idle.mp4'), webm: media('/videos/menseki4/boss/idle.webm') },
   normal: media('/videos/menseki4/boss/attack-normal.mp4'),
-  // ため攻撃の動画はまだ共通置き場にない（容量が大きく取りこめなかった）。できるまでは通常こうげきと同じ動画を使う。
-  special: media('/videos/menseki4/boss/attack-normal.mp4'),
+  special: media('/videos/menseki4/boss/attack-special.mp4'),
 };
 const IDLE_POSTER = media('/videos/menseki4/boss/idle-poster.jpg');
 
